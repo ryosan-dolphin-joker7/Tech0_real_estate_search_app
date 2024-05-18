@@ -1,20 +1,18 @@
-import os
 import streamlit as st
 import pandas as pd
-import numpy as np
 from dotenv import load_dotenv
-
-
 from streamlit_folium import folium_static
+
+# 他のPythonファイルから関数をインポート
 from function.create_df import create_sample_df
-from function.create_df import conversion_df
-from function.create_df import normalize_address_in_df
+from function.db_search_function import normalize_address_in_df
 from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
-from function.db_search_function import make_clickable, create_map
+from function.db_search_function import create_map
+from function.db_search_function import display_search_results
 
 
 # 環境変数の読み込み
-load_dotenv()
+load_dotenv() #今は使わない
 
 # 環境変数から認証情報を取得
 #SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
@@ -27,24 +25,18 @@ if 'show_all' not in st.session_state:
     st.session_state['show_all'] = False  # 初期状態は地図上の物件のみを表示
 
 
-# 検索結果を表示する関数
-def display_search_results(filtered_df):
-    # 物件番号を含む新しい列を作成
-    filtered_df['物件番号'] = range(1, len(filtered_df) + 1)
-    filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
-    display_columns = ['物件番号', '名称', 'アドレス', '階数', '家賃', '間取り', '物件詳細URL']
-    filtered_df_display = filtered_df[display_columns]
-    st.markdown(filtered_df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-
 # メインのアプリケーション
 def main():
     # データフレームの読み込み
     df = create_sample_df()
-    #df = conversion_df(df)
+
     # 住所の正規化
     df = normalize_address_in_df(df, 'アドレス')
 
+    # データフレームの前処理をする関数を呼び出し
     df = preprocess_dataframe(df)
+
+    # アドレスのデータを使って緯度経度のカラムデータを追加
     df = preprocess_dataframe_tude(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
@@ -88,6 +80,8 @@ def main():
     # デバッグ用の出力
     st.write("DataFrame:", df)
     st.write("Filtered DataFrame:", filtered_df)
+
+    # フィルタリングされたデータフレームの件数を表示
     st.write("Filtered DataFrame2:", filtered_df2)
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
@@ -104,6 +98,7 @@ def main():
         st.session_state['search_clicked'] = True
 
     # Streamlitに地図を表示
+    # 検索ボタンが押された場合のみ、地図を表示
     if st.session_state.get('search_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
         folium_static(m)
@@ -120,6 +115,7 @@ def main():
     st.session_state['show_all'] = (show_all_option == 'すべての検索物件')
 
     # 検索結果の表示
+    # 検索ボタンが押された場合のみ、検索結果を表示
     if st.session_state.get('search_clicked', False):
         if st.session_state['show_all']:
             display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ

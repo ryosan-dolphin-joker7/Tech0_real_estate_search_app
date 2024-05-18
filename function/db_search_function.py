@@ -3,10 +3,10 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
 import geocoder
 import folium
-from streamlit_folium import folium_static
 import time
 import requests
 import urllib
+import re
 
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
@@ -24,18 +24,53 @@ def preprocess_dataframe(df):
     df = df.dropna(subset=['家賃'])
     return df
 
-# データフレームの前処理
-def preprocess_dataframe_tude(df):
-    # 緯度・経度を取得
-    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
-    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_geocoder))
-    df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_sokuchi))
-    time.sleep(1)  # 連続リクエストを避けるために1秒待つ
+# 住所を正規化する関数
+def normalize_address(address):
+    # 全角数字と全角ハイフンを半角に変換
+    address = address.translate(str.maketrans('０１２３４５６７８９－', '0123456789-'))
     
+    # 不要な空白を削除
+    address = re.sub(r'\s+', '', address)
+    
+    # 住所の形式を統一（例: "東京都渋谷区桜丘町1-2" -> "東京都 渋谷区 桜丘町 1-2"）
+    # この例ではシンプルにスペースで区切っていますが、必要に応じて詳細な処理を追加できます
+    address = re.sub(r'(\d+)-(\d+)', r'\1-\2', address)
+    
+    return address
+
+# データフレームの指定された列を正規化する関数
+def normalize_address_in_df(df, address_column):
+    # データフレームの指定された住所列を正規化
+    df[address_column] = df[address_column].apply(normalize_address)
+
+    return df
+
+# データフレームの前処理を行う関数（緯度経度取得用）
+def preprocess_dataframe_tude(df):
+    """
+    アドレス列を基に緯度と経度の列を追加して、与えられたデータフレームを前処理します。
+    """
+    # 緯度・経度を取得
+
+    # GeoPyを使用して緯度経度を取得
+    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
+
+    # geocoderを使用して緯度経度を取得
+    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_geocoder))
+
+    # 国土地理院の地理院地図のAPIを使用して緯度経度を取得
+    df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_sokuchi))
+
+    time.sleep(1)  # 連続リクエストを避けるために1秒待つ
+
     return df
 
 # GeoPyを使用して緯度経度を取得する関数
 def get_lat_lon(address):
+    """
+    アドレスから緯度経度を取得する関数
+    アドレスが見つからない場合はNone, Noneを返す
+    """
     try:
         geolocator = Nominatim(user_agent="geoapiExercises")
         location = geolocator.geocode(address)
@@ -49,8 +84,8 @@ def get_lat_lon(address):
 # geocoderを使用して緯度経度を取得する関数
 def get_lat_lon_geocoder(address):
     """
-    住所から緯度経度を取得する関数
-    住所が見つからない場合はNone, Noneを返す
+    アドレスから緯度経度を取得する関数
+    アドレスが見つからない場合はNone, Noneを返す
     """
     try:
         g = geocoder.osm(address)
@@ -63,8 +98,8 @@ def get_lat_lon_geocoder(address):
 
 def get_lat_lon_sokuchi(address):
     """
-    addressから緯度経度を取得する関数
-    addressには住所文字列を渡す
+    アドレスから緯度経度を取得する関数
+    アドレスには住所文字列を渡す
     緯度経度が取得できない場合はNone, Noneを返す
     """
     base_url = "https://msearch.gsi.go.jp/address-search/AddressSearch?q="
@@ -106,7 +141,6 @@ def create_map(filtered_df):
                 [row['latitude'], row['longitude']],
                 popup=popup
             ).add_to(m)
-
     return m
 
 # 検索結果を表示する関数
