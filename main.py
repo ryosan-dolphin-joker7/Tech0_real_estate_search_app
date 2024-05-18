@@ -6,8 +6,11 @@ from dotenv import load_dotenv
 
 
 from streamlit_folium import folium_static
-from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude, make_clickable, create_map
 from function.create_df import create_sample_df
+from function.create_df import conversion_df
+from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
+from function.db_search_function import make_clickable, create_map
+
 
 # 環境変数の読み込み
 load_dotenv()
@@ -17,8 +20,6 @@ load_dotenv()
 #PRIVATE_KEY_PATH = os.getenv("PRIVATE_KEY_PATH")
 #SP_SHEET     = 'tech0_01' # sheet名
 
-df = create_sample_df()
-df = preprocess_dataframe_tude(df)
 
 # セッション状態の初期化
 if 'show_all' not in st.session_state:
@@ -37,6 +38,7 @@ def display_search_results(filtered_df):
 # メインのアプリケーション
 def main():
     df = create_sample_df()
+    df = conversion_df(df)
     df = preprocess_dataframe(df)
     df = preprocess_dataframe_tude(df)
 
