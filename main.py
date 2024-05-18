@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
 
+
 from streamlit_folium import folium_static
-from function.db_search_function import preprocess_dataframe_tude, make_clickable, create_map
+from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude, make_clickable, create_map
 from function.create_df import create_sample_df
 
 # 環境変数の読み込み
@@ -35,8 +36,9 @@ def display_search_results(filtered_df):
 
 # メインのアプリケーション
 def main():
-    #df = load_data_from_spreadsheet()
-    #df = preprocess_dataframe(df)
+    df = create_sample_df()
+    df = preprocess_dataframe(df)
+    df = preprocess_dataframe_tude(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の可視化')
