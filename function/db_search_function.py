@@ -1,13 +1,8 @@
 import pandas as pd
-import numpy as np
-from google.oauth2.service_account import Credentials
-from gspread_dataframe import set_with_dataframe
 from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import folium_static
 import time
-
-
 
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():

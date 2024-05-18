@@ -2,14 +2,11 @@ import os
 import streamlit as st
 import pandas as pd
 import numpy as np
-import gspread
-from google.oauth2.service_account import Credentials
-from gspread_dataframe import set_with_dataframe
 from dotenv import load_dotenv
-from geopy.geocoders import Nominatim
-import folium
+
 from streamlit_folium import folium_static
 from function.db_search_function import preprocess_dataframe_tude, make_clickable, create_map
+from function.create_df import create_sample_df
 
 # 環境変数の読み込み
 load_dotenv()
@@ -19,72 +16,7 @@ load_dotenv()
 #PRIVATE_KEY_PATH = os.getenv("PRIVATE_KEY_PATH")
 #SP_SHEET     = 'tech0_01' # sheet名
 
-import pandas as pd
-import numpy as np
-
-# サンプルデータ
-sample_data = [
-   {
-       "名称": "マンション名A",
-       "カテゴリ": "マンション",
-       "アドレス": "東京都世田谷区",
-       "アクセス": "○○線/××駅 徒歩5分, △△線/□□駅 徒歩10分",
-       "築年数": 10,
-       "構造": 12,  # 最高階数
-       "階数": 5,
-       "家賃": 15.0,
-       "管理費": 5000,
-       "敷金": 2.0,
-       "礼金": 1.0,
-       "間取り": "2LDK",
-       "面積": 65.08,
-       "物件画像URL": "https://example.com/property_image.jpg",
-       "間取画像URL": "https://example.com/floor_plan.jpg",
-       "物件詳細URL": "https://example.com/property_details",
-       "区": "世田谷区",
-       "市町": "",
-       "アクセス①1線路名": "○○線",
-       "アクセス①1駅名": "××駅",
-       "アクセス①1徒歩(分)": 5,
-       "アクセス①2線路名": "△△線",
-       "アクセス①2駅名": "□□駅",
-       "アクセス①2徒歩(分)": 10,
-       "アクセス①3線路名": None,
-       "アクセス①3駅名": None,
-       "アクセス①3徒歩(分)": None
-   },
-   {
-       "名称": "アパートB",
-       "カテゴリ": "アパート",
-       "アドレス": "東京都渋谷区",
-       "アクセス": "□□線/◇◇駅 徒歩8分",
-       "築年数": 25,
-       "構造": 5,
-       "階数": 3,
-       "家賃": 10.0,
-       "管理費": 3000,
-       "敷金": 1.0,
-       "礼金": 0.0,
-       "間取り": "1K",
-       "面積": 25.0,
-       "物件画像URL": "https://example.com/property_image2.jpg",
-       "間取画像URL": "https://example.com/floor_plan2.jpg",
-       "物件詳細URL": "https://example.com/property_details2",
-       "区": "渋谷区",
-       "市町": "",
-       "アクセス①1線路名": "□□線",
-       "アクセス①1駅名": "◇◇駅",
-       "アクセス①1徒歩(分)": 8,
-       "アクセス①2線路名": None,
-       "アクセス①2駅名": None,
-       "アクセス①2徒歩(分)": None,
-       "アクセス①3線路名": None,
-       "アクセス①3駅名": None,
-       "アクセス①3徒歩(分)": None
-   }
-]
-
-df = pd.DataFrame(sample_data)
+df = create_sample_df()
 df = preprocess_dataframe_tude(df)
 
 # セッション状態の初期化
