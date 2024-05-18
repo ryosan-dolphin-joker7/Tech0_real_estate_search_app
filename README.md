@@ -19,6 +19,7 @@
 │   └── create_df.py            # 物件のデータベースのサンプルデータです
 │
 └── scraping/
+    ├── scraping_real_estate.ipynb     # ホームズのwebサイトをスクレイピングするファイル
     ├── Step3_Scraping_sample01.py
     └── Step3_Scraping.ipynb
 ```
