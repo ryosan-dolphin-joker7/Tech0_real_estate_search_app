@@ -5,11 +5,6 @@ folium
 streamlit-folium
 numpy
 python-dotenv
-gspread
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-gspread-dataframe
 requests
 beautifulsoup4
-lxmlgeocoder 
+geocoder 
