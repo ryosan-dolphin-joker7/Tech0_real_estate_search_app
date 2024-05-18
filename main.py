@@ -10,6 +10,10 @@ from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import folium_static
 
+# db_search_function関数を読み込み
+from function.db_search_function import load_data_from_spreadsheet, preprocess_dataframe
+
+
 # 環境変数の読み込み
 load_dotenv()
 

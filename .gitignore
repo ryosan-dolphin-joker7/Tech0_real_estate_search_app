@@ -10,3 +10,6 @@
 # __pycache__ディレクトリを無視
 __pycache__/
 services\__pycache__
+
+# Virtual environment
+myenv/

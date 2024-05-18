@@ -18,9 +18,6 @@ SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 PRIVATE_KEY_PATH = os.getenv("PRIVATE_KEY_PATH")
 SP_SHEET     = 'tech0_01' # sheet名
 
-# セッション状態の初期化
-if 'show_all' not in st.session_state:
-    st.session_state['show_all'] = False  # 初期状態は地図上の物件のみを表示
 
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
@@ -177,12 +174,3 @@ def main():
             display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ
         else:
             display_search_results(st.session_state.get('filtered_df2', filtered_df2))  # 地図上の物件のみ
-
-
-# アプリケーションの実行
-if __name__ == "__main__":
-    if 'search_clicked' not in st.session_state:
-        st.session_state['search_clicked'] = False
-    if 'show_all' not in st.session_state:
-        st.session_state['show_all'] = False
-    main()
