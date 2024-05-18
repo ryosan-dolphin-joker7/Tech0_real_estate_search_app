@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from streamlit_folium import folium_static
 from function.create_df import create_sample_df
 from function.create_df import conversion_df
+from function.create_df import normalize_address_in_df
 from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
 from function.db_search_function import make_clickable, create_map
 
@@ -37,8 +38,12 @@ def display_search_results(filtered_df):
 
 # メインのアプリケーション
 def main():
+    # データフレームの読み込み
     df = create_sample_df()
-    df = conversion_df(df)
+    #df = conversion_df(df)
+    # 住所の正規化
+    df = normalize_address_in_df(df, 'アドレス')
+
     df = preprocess_dataframe(df)
     df = preprocess_dataframe_tude(df)
 
@@ -79,7 +84,11 @@ def main():
     filtered_df['latitude'] = pd.to_numeric(filtered_df['latitude'], errors='coerce')
     filtered_df['longitude'] = pd.to_numeric(filtered_df['longitude'], errors='coerce')
     filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
-    
+
+    # デバッグ用の出力
+    st.write("DataFrame:", df)
+    st.write("Filtered DataFrame:", filtered_df)
+    st.write("Filtered DataFrame2:", filtered_df2)
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
     col2_1, col2_2 = st.columns([1, 2])

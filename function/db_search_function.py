@@ -1,13 +1,21 @@
 import pandas as pd
 from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut
+import geocoder
 import folium
 from streamlit_folium import folium_static
 import time
+import requests
+import urllib
 
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
     st.session_state['show_all'] = not st.session_state['show_all']
 
+
+# HTML形式のハイパーリンクを生成する
+def make_clickable(url, name):
+    return f'<a target="_blank" href="{url}">{name}</a>'
 
 # データフレームの前処理を行う関数
 def preprocess_dataframe(df):
@@ -16,26 +24,64 @@ def preprocess_dataframe(df):
     df = df.dropna(subset=['家賃'])
     return df
 
-# HTML形式のハイパーリンクを生成する
-def make_clickable(url, name):
-    return f'<a target="_blank" href="{url}">{name}</a>'
-
-# 緯度・経度を取得する処理の追加
-def get_lat_lon(address):
-    geolocator = Nominatim(user_agent="myGeocoder")
-    try:
-        location = geolocator.geocode(address)
-        return (location.latitude, location.longitude) if location else (None, None)
-    except:
-        return (None, None)
-
 # データフレームの前処理
 def preprocess_dataframe_tude(df):
     # 緯度・経度を取得
-    df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
+    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
+    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_geocoder))
+    df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_sokuchi))
     time.sleep(1)  # 連続リクエストを避けるために1秒待つ
     
     return df
+
+# GeoPyを使用して緯度経度を取得する関数
+def get_lat_lon(address):
+    try:
+        geolocator = Nominatim(user_agent="geoapiExercises")
+        location = geolocator.geocode(address)
+        if location:
+            return (location.latitude, location.longitude)
+        else:
+            return (None, None)
+    except GeocoderTimedOut:
+        return (None, None)
+
+# geocoderを使用して緯度経度を取得する関数
+def get_lat_lon_geocoder(address):
+    """
+    住所から緯度経度を取得する関数
+    住所が見つからない場合はNone, Noneを返す
+    """
+    try:
+        g = geocoder.osm(address)
+        if g.ok:
+            return g.lat, g.lng
+        else:
+            return None, None
+    except:
+        return None, None
+
+def get_lat_lon_sokuchi(address):
+    """
+    addressから緯度経度を取得する関数
+    addressには住所文字列を渡す
+    緯度経度が取得できない場合はNone, Noneを返す
+    """
+    base_url = "https://msearch.gsi.go.jp/address-search/AddressSearch?q="
+    quoted_address = urllib.parse.quote(address)
+    url = base_url + quoted_address
+    
+    try:
+        response = requests.get(url)
+        data = response.json()
+        if data:
+            coords = data[0]["geometry"]["coordinates"]
+            return coords[1], coords[0]  # 緯度、経度の順番に注意
+        else:
+            return None, None
+    except:
+        return None, None
+
 
 # 地図を作成し、マーカーを追加する関数
 def create_map(filtered_df):
