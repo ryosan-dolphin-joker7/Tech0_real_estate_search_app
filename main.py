@@ -9,90 +9,88 @@ from dotenv import load_dotenv
 from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import folium_static
-
-# db_search_function関数を読み込み
-from function.db_search_function import load_data_from_spreadsheet, preprocess_dataframe
-
+from function.db_search_function import preprocess_dataframe_tude, make_clickable, create_map
 
 # 環境変数の読み込み
 load_dotenv()
 
 # 環境変数から認証情報を取得
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-PRIVATE_KEY_PATH = os.getenv("PRIVATE_KEY_PATH")
-SP_SHEET     = 'tech0_01' # sheet名
+#SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+#PRIVATE_KEY_PATH = os.getenv("PRIVATE_KEY_PATH")
+#SP_SHEET     = 'tech0_01' # sheet名
+
+import pandas as pd
+import numpy as np
+
+# サンプルデータ
+sample_data = [
+   {
+       "名称": "マンション名A",
+       "カテゴリ": "マンション",
+       "アドレス": "東京都世田谷区",
+       "アクセス": "○○線/××駅 徒歩5分, △△線/□□駅 徒歩10分",
+       "築年数": 10,
+       "構造": 12,  # 最高階数
+       "階数": 5,
+       "家賃": 15.0,
+       "管理費": 5000,
+       "敷金": 2.0,
+       "礼金": 1.0,
+       "間取り": "2LDK",
+       "面積": 65.08,
+       "物件画像URL": "https://example.com/property_image.jpg",
+       "間取画像URL": "https://example.com/floor_plan.jpg",
+       "物件詳細URL": "https://example.com/property_details",
+       "区": "世田谷区",
+       "市町": "",
+       "アクセス①1線路名": "○○線",
+       "アクセス①1駅名": "××駅",
+       "アクセス①1徒歩(分)": 5,
+       "アクセス①2線路名": "△△線",
+       "アクセス①2駅名": "□□駅",
+       "アクセス①2徒歩(分)": 10,
+       "アクセス①3線路名": None,
+       "アクセス①3駅名": None,
+       "アクセス①3徒歩(分)": None
+   },
+   {
+       "名称": "アパートB",
+       "カテゴリ": "アパート",
+       "アドレス": "東京都渋谷区",
+       "アクセス": "□□線/◇◇駅 徒歩8分",
+       "築年数": 25,
+       "構造": 5,
+       "階数": 3,
+       "家賃": 10.0,
+       "管理費": 3000,
+       "敷金": 1.0,
+       "礼金": 0.0,
+       "間取り": "1K",
+       "面積": 25.0,
+       "物件画像URL": "https://example.com/property_image2.jpg",
+       "間取画像URL": "https://example.com/floor_plan2.jpg",
+       "物件詳細URL": "https://example.com/property_details2",
+       "区": "渋谷区",
+       "市町": "",
+       "アクセス①1線路名": "□□線",
+       "アクセス①1駅名": "◇◇駅",
+       "アクセス①1徒歩(分)": 8,
+       "アクセス①2線路名": None,
+       "アクセス①2駅名": None,
+       "アクセス①2徒歩(分)": None,
+       "アクセス①3線路名": None,
+       "アクセス①3駅名": None,
+       "アクセス①3徒歩(分)": None
+   }
+]
+
+df = pd.DataFrame(sample_data)
+df = preprocess_dataframe_tude(df)
 
 # セッション状態の初期化
 if 'show_all' not in st.session_state:
     st.session_state['show_all'] = False  # 初期状態は地図上の物件のみを表示
 
-# 地図上以外の物件も表示するボタンの状態を切り替える関数
-def toggle_show_all():
-    st.session_state['show_all'] = not st.session_state['show_all']
-
-
-# スプレッドシートからデータを読み込む関数
-def load_data_from_spreadsheet():
-    # googleスプレッドシートの認証 jsonファイル読み込み(key値はGCPから取得)
-    SP_CREDENTIAL_FILE = PRIVATE_KEY_PATH
-
-    scopes = [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
-    ]
-
-    credentials = Credentials.from_service_account_file(
-        SP_CREDENTIAL_FILE,
-        scopes=scopes
-    )
-    gc = gspread.authorize(credentials)
-
-    SP_SHEET_KEY = SPREADSHEET_ID # d/〇〇/edit の〇〇部分
-    sh  = gc.open_by_key(SP_SHEET_KEY)
-
-    # 不動産データの取得
-    worksheet = sh.worksheet(SP_SHEET) # シートのデータ取得
-    pre_data  = worksheet.get_all_values()
-    col_name = pre_data[0][:]
-    df = pd.DataFrame(pre_data[1:], columns=col_name) # 一段目をカラム、以下データフレームで取得
-
-    return df
-
-# データフレームの前処理を行う関数
-def preprocess_dataframe(df):
-    # '家賃' 列を浮動小数点数に変換し、NaN値を取り除く
-    df['家賃'] = pd.to_numeric(df['家賃'], errors='coerce')
-    df = df.dropna(subset=['家賃'])
-    return df
-
-def make_clickable(url, name):
-    return f'<a target="_blank" href="{url}">{name}</a>'
-
-# 地図を作成し、マーカーを追加する関数
-def create_map(filtered_df):
-    # 地図の初期設定
-    map_center = [filtered_df['latitude'].mean(), filtered_df['longitude'].mean()]
-    m = folium.Map(location=map_center, zoom_start=12)
-
-    # マーカーを追加
-    for idx, row in filtered_df.iterrows():
-        if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
-            # ポップアップに表示するHTMLコンテンツを作成
-            popup_html = f"""
-            <b>名称:</b> {row['名称']}<br>
-            <b>アドレス:</b> {row['アドレス']}<br>
-            <b>家賃:</b> {row['家賃']}万円<br>
-            <b>間取り:</b> {row['間取り']}<br>
-            <a href="{row['物件詳細URL']}" target="_blank">物件詳細</a>
-            """
-            # HTMLをポップアップに設定
-            popup = folium.Popup(popup_html, max_width=400)
-            folium.Marker(
-                [row['latitude'], row['longitude']],
-                popup=popup
-            ).add_to(m)
-
-    return m
 
 # 検索結果を表示する関数
 def display_search_results(filtered_df):
@@ -105,8 +103,8 @@ def display_search_results(filtered_df):
 
 # メインのアプリケーション
 def main():
-    df = load_data_from_spreadsheet()
-    df = preprocess_dataframe(df)
+    #df = load_data_from_spreadsheet()
+    #df = preprocess_dataframe(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の可視化')
@@ -140,11 +138,12 @@ def main():
     filtered_df = filtered_df[(filtered_df['家賃'] >= price_min) & (filtered_df['家賃'] <= price_max)]
     filtered_count = len(filtered_df)
 
+    
     # 'latitude' と 'longitude' 列を数値型に変換し、NaN値を含む行を削除
     filtered_df['latitude'] = pd.to_numeric(filtered_df['latitude'], errors='coerce')
     filtered_df['longitude'] = pd.to_numeric(filtered_df['longitude'], errors='coerce')
     filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
-
+    
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
     col2_1, col2_2 = st.columns([1, 2])
