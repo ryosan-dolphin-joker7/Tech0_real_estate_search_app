@@ -151,3 +151,20 @@ def display_search_results(filtered_df):
     display_columns = ['物件番号', '名称', 'アドレス', '階数', '家賃', '間取り', '物件詳細URL']
     filtered_df_display = filtered_df[display_columns]
     st.markdown(filtered_df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+# SQLiteデータベースからキーワードに基づいて名言を検索する関数
+def search_estate_from_db(estate_name):
+    try:
+        with sqlite3.connect("estate_list.db") as conn:
+            # SQLクエリでtitleとquoteカラム両方を検索
+            query = """
+            SELECT title, quote, author
+            FROM quotes
+            WHERE title LIKE ? OR quote LIKE ?
+            """
+            # キーワードをパーセント記号で囲んで部分一致検索を可能にする
+            params = ('%' + keyword + '%', '%' + keyword + '%')
+            return pd.read_sql_query(query, conn, params=params)
+    except Exception as e:
+        st.error(f"データベースエラー: {e}")
+        return pd.DataFrame()  # エラーが発生した場合は空のDataFrameを返す
