@@ -9,6 +9,10 @@ from function.db_search_function import normalize_address_in_df
 from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
 from function.db_search_function import create_map
 from function.db_search_function import display_search_results
+from function.db_search_function import filter_estate_data
+from function.db_search_function import search_estate_from_db
+from function.db_search_function import estate_data
+
 
 
 # 環境変数の読み込み
@@ -86,6 +90,9 @@ def main():
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
     col2_1, col2_2 = st.columns([1, 2])
+
+    # SQLiteでのフィルタリング条件と検索結果を表示
+    filtered_df3, filtered_count3 = filter_estate_data(area, type_options, price_min, price_max)
 
     with col2_2:
         st.write(f"物件検索数: {filtered_count}件 / 全{len(df)}件")

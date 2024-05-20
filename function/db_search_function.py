@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut
@@ -7,6 +8,7 @@ import time
 import requests
 import urllib
 import re
+import sqlite3
 
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
@@ -152,19 +154,58 @@ def display_search_results(filtered_df):
     filtered_df_display = filtered_df[display_columns]
     st.markdown(filtered_df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-# SQLiteデータベースからキーワードに基づいて名言を検索する関数
-def search_estate_from_db(estate_name):
+# SQLiteデータベースからキーワードに基づいて物件データを検索する関数
+def search_estate_from_db(keyword):
     try:
-        with sqlite3.connect("estate_list.db") as conn:
-            # SQLクエリでtitleとquoteカラム両方を検索
+        with sqlite3.connect(db_file_name='./scraping/estate_list.db') as conn:
+            # SQLクエリで複数のカラムを検索
             query = """
-            SELECT title, quote, author
-            FROM quotes
-            WHERE title LIKE ? OR quote LIKE ?
+                SELECT 名称, アドレス, 階数, 家賃, 間取り, 物件詳細URL
+                FROM Property_data
+                WHERE 名称 LIKE ? OR アドレス LIKE ?
             """
             # キーワードをパーセント記号で囲んで部分一致検索を可能にする
             params = ('%' + keyword + '%', '%' + keyword + '%')
-            return pd.read_sql_query(query, conn, params=params)
+
+            filtered_df = pd.read_sql_query(query, conn, params=params)
+            return filtered_df
+        
     except Exception as e:
         st.error(f"データベースエラー: {e}")
-        return pd.DataFrame()  # エラーが発生した場合は空のDataFrameを返す
+        return pd.DataFrame() # エラーが発生した場合は空のDataFrameを返す
+
+def filter_estate_data(area, type_options, price_min, price_max, db_file_name='./scraping/estate_list.db'):
+    try:
+        with sqlite3.connect(db_file_name) as conn:
+            # SQLクエリを作成
+            query = """
+            SELECT *
+            FROM Property_data
+            WHERE 区 = ?
+            AND 間取り IN ({})
+            AND 家賃 BETWEEN ? AND ?
+            """.format(','.join('?' * len(type_options)))
+
+            # クエリのパラメータを設定
+            params = [area] + type_options + [price_min, price_max]
+
+            # SQLクエリを実行してフィルタリングされたデータを取得
+            filtered_df = pd.read_sql_query(query, conn, params=params)
+            # フィルタリングされたデータフレームの件数を取得
+            filtered_count = len(filtered_df)
+            return filtered_df, filtered_count
+    except Exception as e:
+        st.error(f"データベースエラー: {e}")
+        return pd.DataFrame(), 0
+
+def estate_data(db_file_name='./scraping/estate_list.db'):
+    try:
+        with sqlite3.connect(db_file_name) as conn:
+            # SQLクエリを作成
+            df = pd.read_sql('SELECT * FROM Property_data', conn)
+            return df
+
+    except Exception as e:
+        st.error(f"データベースエラー: {e}")
+        return pd.DataFrame()
+    
