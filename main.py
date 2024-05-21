@@ -7,7 +7,7 @@ from streamlit_folium import folium_static
 from function.create_df import create_sample_df
 from function.db_search_function import normalize_address_in_df
 from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
-from function.db_search_function import create_map
+from function.db_search_function import create_map, display_search_results, add_starbucks_to_map
 from function.db_search_function import display_search_results
 from function.db_search_function import filter_estate_data
 from function.db_search_function import search_estate_from_db
@@ -108,6 +108,7 @@ def main():
     # 検索ボタンが押された場合のみ、地図を表示
     if st.session_state.get('search_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
+        m = add_starbucks_to_map(m, 'scraping/starbucks_list2.db','quotes')  # スターバックスの店舗を追加
         folium_static(m)
 
     # 地図の下にラジオボタンを配置し、選択したオプションに応じて表示を切り替える

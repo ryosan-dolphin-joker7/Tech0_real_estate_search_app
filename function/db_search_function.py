@@ -10,6 +10,12 @@ import urllib
 import re
 import sqlite3
 
+# スターバックスのデータベースを読み込む関数
+def load_starbucks_data(db_path, table_name):
+    with sqlite3.connect(db_path) as conn:
+        query = "SELECT store_name, address FROM quotes"
+        return pd.read_sql_query(query, conn)
+
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
     st.session_state['show_all'] = not st.session_state['show_all']
@@ -121,7 +127,7 @@ def get_lat_lon_sokuchi(address):
 
 
 # 地図を作成し、マーカーを追加する関数
-def create_map(filtered_df):
+def create_map(filtered_df,starbucks_df=None):
     # 地図の初期設定
     map_center = [filtered_df['latitude'].mean(), filtered_df['longitude'].mean()]
     m = folium.Map(location=map_center, zoom_start=12)
@@ -142,6 +148,25 @@ def create_map(filtered_df):
             folium.Marker(
                 [row['latitude'], row['longitude']],
                 popup=popup
+            ).add_to(m)
+    return m
+
+# 地図にスターバックスのマーカーを追加する関数
+def add_starbucks_to_map(m, db_path, table_name):
+    starbucks_df = load_starbucks_data(db_path, table_name)
+    starbucks_df['latitude'], starbucks_df['longitude'] = zip(*starbucks_df['address'].apply(get_lat_lon_sokuchi))
+    
+    for idx, row in starbucks_df.iterrows():
+        if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
+            popup_html = f"""
+            <b>店舗名:</b> {row['store_name']}<br>
+            <b>住所:</b> {row['address']}<br>
+            """
+            popup = folium.Popup(popup_html, max_width=400)
+            folium.Marker(
+                [row['latitude'], row['longitude']],
+                popup=popup,
+                icon=folium.Icon(color='green', icon='coffee', prefix='fa')
             ).add_to(m)
     return m
 
