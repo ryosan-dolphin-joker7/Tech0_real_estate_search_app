@@ -51,7 +51,7 @@ def main():
     df = preprocess_dataframe(df)
 
     # アドレスのデータを使って緯度経度のカラムデータを追加
-    #df = preprocess_dataframe_tude(df)
+    df = preprocess_dataframe_tude(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の可視化')
@@ -86,6 +86,8 @@ def main():
 
     # アドレスのデータを使って緯度経度のカラムデータを追加
     filtered_df = preprocess_dataframe_tude(filtered_df)
+    # 緯度・経度が取得できない行を削除
+    filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
 
     # スターバックスの区別のデータを取得
     starbucks_filtered_df = starbucks_df[(starbucks_df['区'].isin([area]))]
@@ -95,10 +97,6 @@ def main():
     # アドレスのデータを使って緯度経度のカラムデータを追加
     #starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
 
-    # 'latitude' と 'longitude' 列を数値型に変換し、NaN値を含む行を削除
-    filtered_df['latitude'] = pd.to_numeric(filtered_df['latitude'], errors='coerce')
-    filtered_df['longitude'] = pd.to_numeric(filtered_df['longitude'], errors='coerce')
-    filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
 
     # デバッグ用の出力
     st.write("DataFrame:", df)
@@ -128,7 +126,7 @@ def main():
     if st.session_state.get('search_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
 
-        m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
+        #m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
         folium_static(m)
 
     # 地図の下にラジオボタンを配置し、選択したオプションに応じて表示を切り替える
