@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from dotenv import load_dotenv
 from streamlit_folium import folium_static
+import re
 
 # 他のPythonファイルから関数をインポート
 from function.create_df import create_sample_df
@@ -42,16 +43,16 @@ def main():
     starbucks_df = load_starbucks_data(db_path, table_name)
 
     # 区のカラムを作成
-    starbucks_df['区'] = starbucks_df["address"].apply(lambda x : x[x.find("都")+1:x.find("区")+1])
+    starbucks_df['区'] = starbucks_df["address"].apply(lambda x: re.sub(r'\s', '', x[x.find("都")+1:x.find("区")+1]))
+    # カラム名の住所をaddressにのみ変更
+    starbucks_df = starbucks_df.rename(columns={'address': 'アドレス'})
 
     # 住所の正規化
     df = normalize_address_in_df(df, 'アドレス')
+    starbucks_df = normalize_address_in_df(starbucks_df, 'アドレス')
 
     # データフレームの前処理をする関数を呼び出し
     df = preprocess_dataframe(df)
-
-    # アドレスのデータを使って緯度経度のカラムデータを追加
-    df = preprocess_dataframe_tude(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の可視化')
@@ -91,19 +92,15 @@ def main():
 
     # スターバックスの区別のデータを取得
     starbucks_filtered_df = starbucks_df[(starbucks_df['区'].isin([area]))]
-    # カラム名の住所をaddressにのみ変更
-    starbucks_filtered_df = starbucks_df.rename(columns={'address': 'アドレス'})
 
     # アドレスのデータを使って緯度経度のカラムデータを追加
-    #starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
+    starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
 
 
     # デバッグ用の出力
-    st.write("DataFrame:", df)
-    st.write("starbucks_df:", starbucks_df)
-
-    # フィルタリングされたデータフレームの件数を表示
-    st.write("starbucks_filtered_df:", starbucks_filtered_df)
+    #st.write("filtered_df:", filtered_df)
+    #st.write("starbucks_df:", starbucks_df)
+    #st.write("starbucks_filtered_df:", starbucks_filtered_df)
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
     col2_1, col2_2 = st.columns([1, 2])
@@ -126,7 +123,7 @@ def main():
     if st.session_state.get('search_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
 
-        #m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
+        m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
         folium_static(m)
 
     # 地図の下にラジオボタンを配置し、選択したオプションに応じて表示を切り替える

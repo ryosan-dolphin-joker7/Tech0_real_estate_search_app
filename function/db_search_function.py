@@ -164,7 +164,7 @@ def add_starbucks_to_map(m, starbucks_df):
         if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
             popup_html = f"""
             <b>店舗名:</b> {row['store_name']}<br>
-            <b>住所:</b> {row['address']}<br>
+            <b>住所:</b> {row['アドレス']}<br>
             """
             popup = folium.Popup(popup_html, max_width=400)
             folium.Marker(
