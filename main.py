@@ -10,10 +10,7 @@ from function.db_search_function import preprocess_dataframe,preprocess_datafram
 from function.db_search_function import create_map, display_search_results, add_starbucks_to_map
 from function.db_search_function import display_search_results
 from function.db_search_function import filter_estate_data
-from function.db_search_function import search_estate_from_db
-from function.db_search_function import estate_data
-
-
+from function.db_search_function import load_starbucks_data
 
 # 環境変数の読み込み
 load_dotenv() #今は使わない
@@ -28,11 +25,24 @@ load_dotenv() #今は使わない
 if 'show_all' not in st.session_state:
     st.session_state['show_all'] = False  # 初期状態は地図上の物件のみを表示
 
+# サイドバーに緯度経度の検索方法を選択するセレクトボックスを追加
+st.session_search_method = st.sidebar.selectbox(
+    '緯度経度検索方法:',
+    ('Google Maps API', 'Geopy', 'geocoder', '国土地理院地理院地図API'),
+)
 
 # メインのアプリケーション
 def main():
     # データフレームの読み込み
     df = create_sample_df()
+
+    # スターバックスの店舗データを読み込む
+    db_path ='scraping/starbucks_list2.db'
+    table_name ='quotes'
+    starbucks_df = load_starbucks_data(db_path, table_name)
+
+    # 区のカラムを作成
+    starbucks_df['区'] = starbucks_df["address"].apply(lambda x : x[x.find("都")+1:x.find("区")+1])
 
     # 住所の正規化
     df = normalize_address_in_df(df, 'アドレス')
@@ -41,7 +51,7 @@ def main():
     df = preprocess_dataframe(df)
 
     # アドレスのデータを使って緯度経度のカラムデータを追加
-    df = preprocess_dataframe_tude(df)
+    #df = preprocess_dataframe_tude(df)
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の可視化')
@@ -52,7 +62,6 @@ def main():
     with col1:
         # エリア選択
         area = st.radio('■ エリア選択', df['区'].unique())
-
 
     with col2:
         # 家賃範囲選択のスライダーをfloat型で設定し、小数点第一位まで表示
@@ -75,7 +84,17 @@ def main():
     filtered_df = filtered_df[(filtered_df['家賃'] >= price_min) & (filtered_df['家賃'] <= price_max)]
     filtered_count = len(filtered_df)
 
-    
+    # アドレスのデータを使って緯度経度のカラムデータを追加
+    filtered_df = preprocess_dataframe_tude(filtered_df)
+
+    # スターバックスの区別のデータを取得
+    starbucks_filtered_df = starbucks_df[(starbucks_df['区'].isin([area]))]
+    # カラム名の住所をaddressにのみ変更
+    starbucks_filtered_df = starbucks_df.rename(columns={'address': 'アドレス'})
+
+    # アドレスのデータを使って緯度経度のカラムデータを追加
+    #starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
+
     # 'latitude' と 'longitude' 列を数値型に変換し、NaN値を含む行を削除
     filtered_df['latitude'] = pd.to_numeric(filtered_df['latitude'], errors='coerce')
     filtered_df['longitude'] = pd.to_numeric(filtered_df['longitude'], errors='coerce')
@@ -83,10 +102,10 @@ def main():
 
     # デバッグ用の出力
     st.write("DataFrame:", df)
-    st.write("Filtered DataFrame:", filtered_df)
+    st.write("starbucks_df:", starbucks_df)
 
     # フィルタリングされたデータフレームの件数を表示
-    st.write("Filtered DataFrame2:", filtered_df2)
+    st.write("starbucks_filtered_df:", starbucks_filtered_df)
 
     # 検索ボタン / # フィルタリングされたデータフレームの件数を表示
     col2_1, col2_2 = st.columns([1, 2])
@@ -108,7 +127,8 @@ def main():
     # 検索ボタンが押された場合のみ、地図を表示
     if st.session_state.get('search_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
-        m = add_starbucks_to_map(m, 'scraping/starbucks_list2.db','quotes')  # スターバックスの店舗を追加
+
+        m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
         folium_static(m)
 
     # 地図の下にラジオボタンを配置し、選択したオプションに応じて表示を切り替える

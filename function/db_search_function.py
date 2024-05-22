@@ -9,6 +9,7 @@ import requests
 import urllib
 import re
 import sqlite3
+from function.googlemap_api import get_lat_lon_google_map_api
 
 # スターバックスのデータベースを読み込む関数
 def load_starbucks_data(db_path, table_name):
@@ -59,15 +60,18 @@ def preprocess_dataframe_tude(df):
     アドレス列を基に緯度と経度の列を追加して、与えられたデータフレームを前処理します。
     """
     # 緯度・経度を取得
+    # st.session_search_methodの値に応じて、緯度経度を取得する関数を変更
+    if st.session_state.get('search_method', 'sokuchi') == 'sokuchi':
+        df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_sokuchi))
+    elif st.session_state.get('search_method', 'sokuchi') == 'GeoPy':
+        df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
+    elif st.session_state.get('search_method', 'sokuchi') == 'geocoder':
+        df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_geocoder))
+    else:
+        df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_google_map_api))
 
-    # GeoPyを使用して緯度経度を取得
-    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon))
-
-    # geocoderを使用して緯度経度を取得
-    #df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_geocoder))
-
-    # 国土地理院の地理院地図のAPIを使用して緯度経度を取得
-    df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_sokuchi))
+    # 緯度・経度が取得できない行を削除
+    df = df.dropna(subset=['latitude', 'longitude'])
 
     time.sleep(1)  # 連続リクエストを避けるために1秒待つ
 
@@ -126,6 +130,7 @@ def get_lat_lon_sokuchi(address):
         return None, None
 
 
+
 # 地図を作成し、マーカーを追加する関数
 def create_map(filtered_df,starbucks_df=None):
     # 地図の初期設定
@@ -152,9 +157,7 @@ def create_map(filtered_df,starbucks_df=None):
     return m
 
 # 地図にスターバックスのマーカーを追加する関数
-def add_starbucks_to_map(m, db_path, table_name):
-    starbucks_df = load_starbucks_data(db_path, table_name)
-    starbucks_df['latitude'], starbucks_df['longitude'] = zip(*starbucks_df['address'].apply(get_lat_lon_sokuchi))
+def add_starbucks_to_map(m, starbucks_df):
     
     for idx, row in starbucks_df.iterrows():
         if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
