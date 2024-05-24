@@ -71,8 +71,8 @@ def preprocess_dataframe_tude(df):
         df['latitude'], df['longitude'] = zip(*df['アドレス'].apply(get_lat_lon_google_map_api))
 
     # 'latitude' と 'longitude' 列を数値型に変換し、NaN値を含む行を削除
-    df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
-    df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
+    df.loc[:, 'latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
+    df.loc[:, 'longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
 
     time.sleep(1)  # 連続リクエストを避けるために1秒待つ
 
