@@ -163,7 +163,7 @@ def add_starbucks_to_map(m, starbucks_df):
     for idx, row in starbucks_df.iterrows():
         if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
             popup_html = f"""
-            <b>店舗名:</b> {row['store_name']}<br>
+            <b>店舗名:</b> {row['名称']}<br>
             <b>住所:</b> {row['アドレス']}<br>
             """
             popup = folium.Popup(popup_html, max_width=400)
@@ -178,10 +178,18 @@ def add_starbucks_to_map(m, starbucks_df):
 def display_search_results(filtered_df):
     # 物件番号を含む新しい列を作成
     filtered_df['物件番号'] = range(1, len(filtered_df) + 1)
-    filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
+    #filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
     display_columns = ['物件番号', '名称', 'アドレス', '階数', '家賃', '間取り', '物件詳細URL']
     filtered_df_display = filtered_df[display_columns]
     st.markdown(filtered_df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+# mapのオプションを表示する関数
+def display_map_options(df):
+    # 番号を含む新しい列を作成
+    df['番号'] = range(1, len(df) + 1)
+    display_columns = ['番号', '名称']
+    df_display = df[display_columns]
+    st.markdown(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 
 # SQLiteデータベースからキーワードに基づいて物件データを検索する関数
 def search_estate_from_db(keyword):

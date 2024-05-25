@@ -8,8 +8,10 @@ import re
 from function.create_df import create_sample_df
 from function.db_search_function import normalize_address_in_df
 from function.db_search_function import preprocess_dataframe,preprocess_dataframe_tude
-from function.db_search_function import create_map, display_search_results, add_starbucks_to_map
+from function.db_search_function import create_map, add_starbucks_to_map
+from function.db_search_function import make_clickable
 from function.db_search_function import display_search_results
+from function.db_search_function import display_map_options
 from function.db_search_function import filter_estate_data
 from function.db_search_function import load_starbucks_data
 
@@ -55,6 +57,7 @@ def load_starbucks_df(area):
     starbucks_df['区'] = starbucks_df["address"].apply(lambda x: re.sub(r'\s', '', x[x.find("都")+1:x.find("区")+1]))
     # カラム名の住所をaddressにのみ変更
     starbucks_df = starbucks_df.rename(columns={'address': 'アドレス'})
+    starbucks_df = starbucks_df.rename(columns={'store_name': '名称'})
 
     # 住所の正規化
     starbucks_df = normalize_address_in_df(starbucks_df, 'アドレス')
@@ -103,6 +106,9 @@ def main():
     filtered_df = filtered_df[(filtered_df['家賃'] >= price_min) & (filtered_df['家賃'] <= price_max)]
     filtered_count = len(filtered_df)
 
+    # 物件唱題URLの列を作成
+    filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
+
     # アドレスのデータを使って緯度経度のカラムデータを追加
     filtered_df = preprocess_dataframe_tude(filtered_df)
     # 緯度・経度が取得できない行を削除
@@ -124,7 +130,7 @@ def main():
         st.write(f"物件検索数: {filtered_count}件 / 全{len(df)}件")
 
     # 検索ボタン
-    if col2_1.button('検索＆更新', key='search_button'):
+    if col2_1.button('検索結果のリスト表示', key='search_button'):
         # 検索ボタンが押された場合、セッションステートに結果を保存
         st.session_state['filtered_df'] = filtered_df
         st.session_state['filtered_df2'] = filtered_df2
@@ -137,8 +143,6 @@ def main():
 
     # 地図の表示ボタン
     st.header("地図の表示")
-    # 間取り選択のデフォルト値をすべてに設定
-    map_options = st.multiselect('■ 表示ピン選択', ['スタバ','幼稚園'])
 
     if st.button('地図の表示', key='map_button'):
         # 検索ボタンが押された場合、セッションステートに結果を保存
@@ -148,6 +152,20 @@ def main():
     # 地図の表示ボタンが押された場合のみ、地図を表示
     if st.session_state.get('map_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
+        folium_static(m)
+
+    # 地図の表示ボタン
+    st.header("追加オプションの地図表示")
+    # 間取り選択のデフォルト値をすべてに設定
+    map_options = st.multiselect('■ 表示ピン選択', ['スタバ','幼稚園'])
+
+    if st.button('追加オプションの地図表示', key='map_options_button'):
+        # 検索ボタンが押された場合、セッションステートに結果を保存
+        st.session_state['map_options_clicked'] = True
+
+    # 追加オプションを地図に表示
+    # 地図の表示ボタンが押された場合のみ、地図を表示
+    if st.session_state.get('map_options_clicked', False):
 
         if 'スタバ' in map_options:
             # スターバックスの区別のデータを取得
@@ -164,13 +182,15 @@ def main():
     )
 
     # 地図ボタンが押された場合のみ、検索結果を表示
-    if st.session_state.get('map_clicked', False):
+    if st.session_state.get('map_options_clicked', False):
         if st.session_state['show_all']:
-            display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ
+            display_map_options(st.session_state.get('starbucks_filtered_df', starbucks_filtered_df))  # 全データ
         else:
-            display_search_results(st.session_state.get('filtered_df2', filtered_df2))  # 地図上の物件のみ
+            display_map_options(st.session_state.get('starbucks_filtered_df', starbucks_filtered_df))  # 地図上の物件のみ
+
     # ラジオボタンの選択に応じてセッションステートを更新
     st.session_state['show_all'] = (show_all_option == 'すべての検索物件')
+
 
     # 物件の選択
     st.header("物件の選択")
