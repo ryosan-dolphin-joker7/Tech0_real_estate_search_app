@@ -17,6 +17,29 @@ def load_starbucks_data(db_path, table_name):
         query = "SELECT store_name, address FROM quotes"
         return pd.read_sql_query(query, conn)
 
+# スターバックスの店舗データを読み込む
+def load_starbucks_df(area):
+    db_path ='scraping/starbucks_list2.db'
+    table_name ='quotes'
+    starbucks_df = load_starbucks_data(db_path, table_name)
+
+    # 区のカラムを作成
+    starbucks_df['区'] = starbucks_df["address"].apply(lambda x: re.sub(r'\s', '', x[x.find("都")+1:x.find("区")+1]))
+    # カラム名の住所をaddressにのみ変更
+    starbucks_df = starbucks_df.rename(columns={'address': 'アドレス'})
+    starbucks_df = starbucks_df.rename(columns={'store_name': '名称'})
+
+    # 住所の正規化
+    starbucks_df = normalize_address_in_df(starbucks_df, 'アドレス')
+
+    # スターバックスの区別のデータを取得
+    starbucks_filtered_df = starbucks_df[starbucks_df['区'] == area]
+
+    # アドレスのデータを使って緯度経度のカラムデータを追加
+    starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
+
+    return starbucks_filtered_df
+
 # 地図上以外の物件も表示するボタンの状態を切り替える関数
 def toggle_show_all():
     st.session_state['show_all'] = not st.session_state['show_all']
@@ -157,6 +180,43 @@ def create_map(filtered_df,starbucks_df=None):
             ).add_to(m)
     return m
 
+# 地図にユーザーの職場をマップに追加する関数
+def add_user_to_map(m, user_df):
+    for idx, row in user_df.iterrows():
+        if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
+            popup_html = f"""
+            <b>ユーザー:</b> {row['名前']}<br>
+            <b>住所:</b> {row['アドレス']}<br>
+            """            
+
+            # ユーザーのマーカーを追加
+            popup = folium.Popup(popup_html, max_width=400)
+            folium.Marker(
+                [row['latitude'], row['longitude']],
+                popup=popup,
+                icon=folium.Icon(color='blue', icon='user', prefix='fa')
+            ).add_to(m)
+    return m
+
+# 地図にユーザーとパートナーの職場を追加する関数
+def add_partner_to_map(m, partner_df):
+    for idx, row in partner_df.iterrows():
+        if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
+            popup_html = f"""
+            <b>パートナー:</b> {row['名前']}<br>
+            <b>住所:</b> {row['アドレス']}<br>
+            """            
+
+            # パートナーのマーカーを追加
+            popup = folium.Popup(popup_html, max_width=400)
+            folium.Marker(
+                [row['latitude'], row['longitude']],
+                popup=popup,
+                icon=folium.Icon(color='red', icon='heart', prefix='fa')
+            ).add_to(m)
+    return m
+
+
 # 地図にスターバックスのマーカーを追加する関数
 def add_starbucks_to_map(m, starbucks_df):
     
@@ -211,7 +271,7 @@ def search_estate_from_db(keyword):
         st.error(f"データベースエラー: {e}")
         return pd.DataFrame() # エラーが発生した場合は空のDataFrameを返す
 
-def filter_estate_data(area, type_options, price_min, price_max, db_file_name='./scraping/estate_list.db'):
+def filter_estate_data(area, type_options, price_min, price_max, db_file_name='./scraping/estate_list2.db'):
     try:
         with sqlite3.connect(db_file_name) as conn:
             # SQLクエリを作成
@@ -235,7 +295,7 @@ def filter_estate_data(area, type_options, price_min, price_max, db_file_name='.
         st.error(f"データベースエラー: {e}")
         return pd.DataFrame(), 0
 
-def estate_data(db_file_name='./scraping/estate_list.db'):
+def estate_data(db_file_name='./scraping/estate_list2.db'):
     try:
         with sqlite3.connect(db_file_name) as conn:
             # SQLクエリを作成

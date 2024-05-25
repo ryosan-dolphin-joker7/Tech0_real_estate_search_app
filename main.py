@@ -13,7 +13,10 @@ from function.db_search_function import make_clickable
 from function.db_search_function import display_search_results
 from function.db_search_function import display_map_options
 from function.db_search_function import filter_estate_data
-from function.db_search_function import load_starbucks_data
+from function.db_search_function import load_starbucks_df
+from function.db_search_function import add_user_to_map
+from function.db_search_function import add_partner_to_map
+from function.db_search_function import estate_data
 
 # 環境変数の読み込み
 load_dotenv() #今は使わない
@@ -38,37 +41,16 @@ st.session_search_method = st.sidebar.selectbox(
 def load_estate_data():
     # データフレームの読み込み
     df = create_sample_df()
+    #df = estate_data()
 
     # 住所の正規化
-    df = normalize_address_in_df(df, 'アドレス')
+    #df = normalize_address_in_df(df, 'アドレス')
 
     # データフレームの前処理をする関数を呼び出し
     df = preprocess_dataframe(df)
 
     return df
 
-# スターバックスの店舗データを読み込む
-def load_starbucks_df(area):
-    db_path ='scraping/starbucks_list2.db'
-    table_name ='quotes'
-    starbucks_df = load_starbucks_data(db_path, table_name)
-
-    # 区のカラムを作成
-    starbucks_df['区'] = starbucks_df["address"].apply(lambda x: re.sub(r'\s', '', x[x.find("都")+1:x.find("区")+1]))
-    # カラム名の住所をaddressにのみ変更
-    starbucks_df = starbucks_df.rename(columns={'address': 'アドレス'})
-    starbucks_df = starbucks_df.rename(columns={'store_name': '名称'})
-
-    # 住所の正規化
-    starbucks_df = normalize_address_in_df(starbucks_df, 'アドレス')
-
-    # スターバックスの区別のデータを取得
-    starbucks_filtered_df = starbucks_df[starbucks_df['区'] == area]
-
-    # アドレスのデータを使って緯度経度のカラムデータを追加
-    starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
-
-    return starbucks_filtered_df
 
 # メインのアプリケーション
 def main():
@@ -76,7 +58,26 @@ def main():
     df = load_estate_data()
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
-    st.title('賃貸物件情報の検索')
+    st.title('賃貸物件情報の検索アプリ：ホームクエスト')
+    st.write('このアプリケーションは、賃貸物件情報を検索するためのものです。')
+
+    # ユーザーとパートナーの職場を入力してもらう
+    st.header("ユーザー情報の入力")
+    user_name = st.text_input('■ あなたの名前を入力してください', 'ユーザー名')
+    user_workplace = st.text_input('■ あなたの職場の住所を入力してください', '東京都千代田区永田町１丁目７−１')
+    partner_name = st.text_input('■ パートナーの名前を入力してください', 'パートナー名')
+    partner_workplace = st.text_input('■ パートナーの職場の住所を入力してください', '東京都中央区銀座1丁目12番4号')
+
+    # ユーザー情報をデータフレームに追加
+    user_df = pd.DataFrame({
+        '名前': [user_name],
+        'アドレス': [user_workplace]
+    })
+    # パートナー情報をデータフレームに追加
+    partner_df = pd.DataFrame({
+        '名前': [partner_name],
+        'アドレス': [partner_workplace]       
+    })
 
     # エリアと家賃フィルタバーを1:2の割合で分割
     col1, col2 = st.columns([1, 2])
@@ -100,17 +101,19 @@ def main():
     # 間取り選択のデフォルト値をすべてに設定
         type_options = st.multiselect('■ 間取り選択', df['間取り'].unique(), default=df['間取り'].unique())
 
-
     # フィルタリングされたデータフレームとデータ件数を取得
     filtered_df = df[(df['区'].isin([area])) & (df['間取り'].isin(type_options))]
     filtered_df = filtered_df[(filtered_df['家賃'] >= price_min) & (filtered_df['家賃'] <= price_max)]
     filtered_count = len(filtered_df)
 
-    # 物件唱題URLの列を作成
+    # 物件詳細URLの列を作成
     filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
 
     # アドレスのデータを使って緯度経度のカラムデータを追加
     filtered_df = preprocess_dataframe_tude(filtered_df)
+    user_df = preprocess_dataframe_tude(user_df)
+    partner_df = preprocess_dataframe_tude(partner_df)
+
     # 緯度・経度が取得できない行を削除
     filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
 
@@ -134,12 +137,14 @@ def main():
         # 検索ボタンが押された場合、セッションステートに結果を保存
         st.session_state['filtered_df'] = filtered_df
         st.session_state['filtered_df2'] = filtered_df2
+        #st.session_state['filtered_df3'] = filtered_df3
         st.session_state['search_clicked'] = True
 
     # 検索結果の表示
     # 検索ボタンが押された場合のみ、検索結果を表示
     if st.session_state.get('search_clicked', False):
         display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ
+        #display_search_results(st.session_state.get('filtered_df3', filtered_df3))
 
     # 地図の表示ボタン
     st.header("地図の表示")
@@ -152,6 +157,8 @@ def main():
     # 地図の表示ボタンが押された場合のみ、地図を表示
     if st.session_state.get('map_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
+        m = add_user_to_map(m, user_df)  # ユーザーの職場を追加
+        m = add_partner_to_map(m, partner_df)  # パートナーの職場を追加
         folium_static(m)
 
     # 地図の表示ボタン
