@@ -32,12 +32,21 @@ st.session_search_method = st.sidebar.selectbox(
     ('Google Maps API', 'Geopy', 'geocoder', '国土地理院地理院地図API'),
 )
 
-# メインのアプリケーション
-def main():
+# 物件データの読み込み
+def load_estate_data():
     # データフレームの読み込み
     df = create_sample_df()
 
-    # スターバックスの店舗データを読み込む
+    # 住所の正規化
+    df = normalize_address_in_df(df, 'アドレス')
+
+    # データフレームの前処理をする関数を呼び出し
+    df = preprocess_dataframe(df)
+
+    return df
+
+# スターバックスの店舗データを読み込む
+def load_starbucks_df(area):
     db_path ='scraping/starbucks_list2.db'
     table_name ='quotes'
     starbucks_df = load_starbucks_data(db_path, table_name)
@@ -48,14 +57,23 @@ def main():
     starbucks_df = starbucks_df.rename(columns={'address': 'アドレス'})
 
     # 住所の正規化
-    df = normalize_address_in_df(df, 'アドレス')
     starbucks_df = normalize_address_in_df(starbucks_df, 'アドレス')
 
-    # データフレームの前処理をする関数を呼び出し
-    df = preprocess_dataframe(df)
+    # スターバックスの区別のデータを取得
+    starbucks_filtered_df = starbucks_df[starbucks_df['区'] == area]
+
+    # アドレスのデータを使って緯度経度のカラムデータを追加
+    starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
+
+    return starbucks_filtered_df
+
+# メインのアプリケーション
+def main():
+    # 物件データの読み込み
+    df = load_estate_data()
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
-    st.title('賃貸物件情報の可視化')
+    st.title('賃貸物件情報の検索')
 
     # エリアと家賃フィルタバーを1:2の割合で分割
     col1, col2 = st.columns([1, 2])
@@ -80,7 +98,7 @@ def main():
         type_options = st.multiselect('■ 間取り選択', df['間取り'].unique(), default=df['間取り'].unique())
 
 
-    # フィルタリング/ フィルタリングされたデータフレームの件数を取得
+    # フィルタリングされたデータフレームとデータ件数を取得
     filtered_df = df[(df['区'].isin([area])) & (df['間取り'].isin(type_options))]
     filtered_df = filtered_df[(filtered_df['家賃'] >= price_min) & (filtered_df['家賃'] <= price_max)]
     filtered_count = len(filtered_df)
@@ -90,14 +108,8 @@ def main():
     # 緯度・経度が取得できない行を削除
     filtered_df2 = filtered_df.dropna(subset=['latitude', 'longitude'])
 
-    # スターバックスの区別のデータを取得
-    starbucks_filtered_df = starbucks_df[(starbucks_df['区'].isin([area]))]
-
-    # アドレスのデータを使って緯度経度のカラムデータを追加
-    starbucks_filtered_df = preprocess_dataframe_tude(starbucks_filtered_df)
-
-
     # デバッグ用の出力
+    #st.write("df:", df)
     #st.write("filtered_df:", filtered_df)
     #st.write("starbucks_df:", starbucks_df)
     #st.write("starbucks_filtered_df:", starbucks_filtered_df)
@@ -118,13 +130,30 @@ def main():
         st.session_state['filtered_df2'] = filtered_df2
         st.session_state['search_clicked'] = True
 
-    # Streamlitに地図を表示
-    # 検索ボタンが押された場合のみ、地図を表示
+    # 検索結果の表示
+    # 検索ボタンが押された場合のみ、検索結果を表示
     if st.session_state.get('search_clicked', False):
+        display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ
+
+    # 地図の表示ボタン
+    st.header("地図の表示")
+    # 間取り選択のデフォルト値をすべてに設定
+    map_options = st.multiselect('■ 表示ピン選択', ['スタバ','幼稚園'])
+
+    if st.button('地図の表示', key='map_button'):
+        # 検索ボタンが押された場合、セッションステートに結果を保存
+        st.session_state['map_clicked'] = True
+
+    # Streamlitに地図を表示
+    # 地図の表示ボタンが押された場合のみ、地図を表示
+    if st.session_state.get('map_clicked', False):
         m = create_map(st.session_state.get('filtered_df2', filtered_df2))
 
-        m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
-        folium_static(m)
+        if 'スタバ' in map_options:
+            # スターバックスの区別のデータを取得
+            starbucks_filtered_df = load_starbucks_df(area)
+            m = add_starbucks_to_map(m, starbucks_filtered_df)  # スターバックスの店舗を追加
+            folium_static(m)
 
     # 地図の下にラジオボタンを配置し、選択したオプションに応じて表示を切り替える
     show_all_option = st.radio(
@@ -134,17 +163,32 @@ def main():
         key='show_all_option'
     )
 
-    # ラジオボタンの選択に応じてセッションステートを更新
-    st.session_state['show_all'] = (show_all_option == 'すべての検索物件')
-
-    # 検索結果の表示
-    # 検索ボタンが押された場合のみ、検索結果を表示
-    if st.session_state.get('search_clicked', False):
+    # 地図ボタンが押された場合のみ、検索結果を表示
+    if st.session_state.get('map_clicked', False):
         if st.session_state['show_all']:
             display_search_results(st.session_state.get('filtered_df', filtered_df))  # 全データ
         else:
             display_search_results(st.session_state.get('filtered_df2', filtered_df2))  # 地図上の物件のみ
+    # ラジオボタンの選択に応じてセッションステートを更新
+    st.session_state['show_all'] = (show_all_option == 'すべての検索物件')
 
+    # 物件の選択
+    st.header("物件の選択")
+
+    # チェックボックスを表示し、選択された行を保存するリストを初期化
+    selected_rows = []
+
+    # 各行にチェックボックスを追加
+    for index, row in filtered_df2.iterrows():
+        if st.checkbox(f"行 {index} - {row['名称']}"):
+            selected_rows.append(index)
+    
+    # 選択された行のデータを取得
+    selected_data = filtered_df2.loc[selected_rows]
+
+    # 選択された行のデータを表示
+    st.write("選択された行のデータ:")
+    st.dataframe(selected_data)
 
 # アプリケーションの実行
 if __name__ == "__main__":
