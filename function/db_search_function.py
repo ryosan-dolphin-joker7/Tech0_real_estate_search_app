@@ -166,7 +166,7 @@ def create_map(filtered_df,starbucks_df=None):
         if pd.notnull(row['latitude']) and pd.notnull(row['longitude']):
             # ポップアップに表示するHTMLコンテンツを作成
             popup_html = f"""
-            <b>名称:</b> {row['名称']}<br>
+            <b>名称:</b> {row['物件名']}<br>
             <b>アドレス:</b> {row['アドレス']}<br>
             <b>家賃:</b> {row['家賃']}万円<br>
             <b>間取り:</b> {row['間取り']}<br>
@@ -239,7 +239,7 @@ def display_search_results(filtered_df):
     # 物件番号を含む新しい列を作成
     filtered_df['物件番号'] = range(1, len(filtered_df) + 1)
     #filtered_df['物件詳細URL'] = filtered_df['物件詳細URL'].apply(lambda x: make_clickable(x, "リンク"))
-    display_columns = ['物件番号', '名称', 'アドレス', '階数', '家賃', '間取り', '物件詳細URL']
+    display_columns = ['物件番号', '物件名', 'アドレス', '家賃', '間取り', '物件詳細URL']
     filtered_df_display = filtered_df[display_columns]
     st.markdown(filtered_df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 

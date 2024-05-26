@@ -40,8 +40,8 @@ st.session_search_method = st.sidebar.selectbox(
 # 物件データの読み込み
 def load_estate_data():
     # データフレームの読み込み
-    df = create_sample_df()
-    #df = estate_data()
+    #df = create_sample_df()
+    df = estate_data()
 
     # 住所の正規化
     #df = normalize_address_in_df(df, 'アドレス')
@@ -207,7 +207,7 @@ def main():
 
     # 各行にチェックボックスを追加
     for index, row in filtered_df2.iterrows():
-        if st.checkbox(f"行 {index} - {row['名称']}"):
+        if st.checkbox(f"行 {index} - {row['物件名']}"):
             selected_rows.append(index)
     
     # 選択された行のデータを取得
