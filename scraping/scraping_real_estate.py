@@ -9,13 +9,26 @@ import logging
 # ロギングの設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def generate_page_urls(base_url, max_page):
+    page_urls = []
+    for page in range(1, max_page + 1):
+        page_url = f"{base_url}&pn={page}"
+        page_urls.append(page_url)
+    return page_urls
+
 # スクレイピング対象のURLリスト
-url_list = [
+base_urls = [
     'https://suumo.jp/jj/chintai/ichiran/FR301FC005/?fw2=&mt=9999999&cn=9999999&ta=13&et=9999999&sc=13104&shkr1=03&ar=030&bs=040&ct=9999999&shkr3=03&shkr2=03&srch_navi=1&mb=0&shkr4=03&cb=0.0',
     'https://suumo.jp/jj/chintai/ichiran/FR301FC005/?fw2=&mt=9999999&cn=9999999&ta=13&et=9999999&sc=13103&shkr1=03&ar=030&bs=040&ct=9999999&shkr3=03&shkr2=03&srch_navi=1&mb=0&shkr4=03&cb=0.0',
     'https://suumo.jp/jj/chintai/ichiran/FR301FC005/?fw2=&mt=9999999&cn=9999999&ta=13&et=9999999&sc=13109&shkr1=03&ar=030&bs=040&ct=9999999&shkr3=03&shkr2=03&srch_navi=1&mb=0&shkr4=03&cb=0.0',
     # 他のURLを追加する
 ]
+
+max_pages = 3  # 最大ページ数を指定してください
+
+url_list = []
+for base_url in base_urls:
+    url_list.extend(generate_page_urls(base_url, max_pages))
 
 # 物件情報を格納するためのリスト
 properties_list = []
@@ -24,7 +37,9 @@ properties_list = []
 df = pd.DataFrame()
 
 # URLリストからURLを取得し、スクレイピングを実行
-for url in url_list:
+for idx, url in enumerate(url_list, start=1):
+    logging.info(f"Processing URL {idx}/{len(url_list)}: {url}")
+    
     # requestsでURLからデータを取得
     response = requests.get(url)
     response.encoding = response.apparent_encoding

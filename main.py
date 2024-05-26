@@ -44,41 +44,62 @@ def load_estate_data():
     df = estate_data()
 
     # 住所の正規化
-    #df = normalize_address_in_df(df, 'アドレス')
+    df = normalize_address_in_df(df, 'アドレス')
 
     # データフレームの前処理をする関数を呼び出し
     df = preprocess_dataframe(df)
 
     return df
 
+user_df = pd.DataFrame()
+partner_df = pd.DataFrame()
 
 # メインのアプリケーション
 def main():
-    # 物件データの読み込み
-    df = load_estate_data()
+    # 物件データを読み込んでいない場合に実施
+    if 'df' not in st.session_state:
+        # 物件データの読み込み
+        st.session_state['df'] = load_estate_data()
+
+    df = st.session_state['df']
 
     # StreamlitのUI要素（スライダー、ボタンなど）の各表示設定
     st.title('賃貸物件情報の検索アプリ：ホームクエスト')
     st.write('このアプリケーションは、賃貸物件情報を検索するためのものです。')
 
-    # ユーザーとパートナーの職場を入力してもらう
     st.header("ユーザー情報の入力")
-    user_name = st.text_input('■ あなたの名前を入力してください', 'ユーザー名')
-    user_workplace = st.text_input('■ あなたの職場の住所を入力してください', '東京都千代田区永田町１丁目７−１')
-    partner_name = st.text_input('■ パートナーの名前を入力してください', 'パートナー名')
-    partner_workplace = st.text_input('■ パートナーの職場の住所を入力してください', '東京都中央区銀座1丁目12番4号')
+    # エリアと家賃フィルタバーを1:2の割合で分割
+    col2_1, col2_2 = st.columns(2)
+    with col2_1:
+        # ユーザーとパートナーの職場を入力してもらう
+        user_name = st.text_input('■ あなたの名前を入力してください', 'ユーザー名')
+        user_workplace = st.text_input('■ あなたの職場の住所を入力してください', '東京都千代田区永田町１丁目７−１')
+        user_like_madori = st.text_input('■ あなたの好きな間取りを入力してください', '2K')
+        user_hope_fee = st.text_input('■ あなたの希望家賃を入力してください', '20')
+        # ユーザー情報をデータフレームに追加
+        user_df = pd.DataFrame({
+            '名前': [user_name],
+            'アドレス': [user_workplace],
+            '間取り': [user_like_madori],
+            '家賃': [user_hope_fee]
+        })
 
-    # ユーザー情報をデータフレームに追加
-    user_df = pd.DataFrame({
-        '名前': [user_name],
-        'アドレス': [user_workplace]
-    })
-    # パートナー情報をデータフレームに追加
-    partner_df = pd.DataFrame({
-        '名前': [partner_name],
-        'アドレス': [partner_workplace]       
-    })
+    with col2_2:
+        partner_name = st.text_input('■ パートナーの名前を入力してください', 'パートナー名')
+        partner_workplace = st.text_input('■ パートナーの職場の住所を入力してください', '東京都中央区銀座1丁目12番4号')
+        partner_like_madori = st.text_input('■ パートナーの好きな間取りを入力してください', '1LDK')
+        partner_hope_fee = st.text_input('■ パートナーの希望家賃を入力してください', '15')
+        # パートナー情報をデータフレームに追加
+        partner_df = pd.DataFrame({
+            '名前': [partner_name],
+            'アドレス': [partner_workplace],
+            '間取り': [partner_like_madori],
+            '家賃': [partner_hope_fee]
+        })
+    # ユーザーとパートナーのデータフレームを結合する
+    user_partner_df = pd.concat([user_df, partner_df], ignore_index=True)
 
+    st.header("物件の検索条件")
     # エリアと家賃フィルタバーを1:2の割合で分割
     col1, col2 = st.columns([1, 2])
 
@@ -91,15 +112,15 @@ def main():
         price_min, price_max = st.slider(
             '■ 家賃範囲 (万円)', 
             min_value=float(1), 
-            max_value=float(df['家賃'].max()),
-            value=(float(df['家賃'].min()), float(df['家賃'].max())),
+            max_value=float(40),
+            value=(float(user_partner_df['家賃'].min()), float(user_partner_df['家賃'].max())),
             step=0.1,  # ステップサイズを0.1に設定
             format='%.1f'
         )
 
     with col2:
     # 間取り選択のデフォルト値をすべてに設定
-        type_options = st.multiselect('■ 間取り選択', df['間取り'].unique(), default=df['間取り'].unique())
+        type_options = st.multiselect('■ 間取り選択', df['間取り'].unique(), default=user_partner_df['間取り'].unique())
 
     # フィルタリングされたデータフレームとデータ件数を取得
     filtered_df = df[(df['区'].isin([area])) & (df['間取り'].isin(type_options))]

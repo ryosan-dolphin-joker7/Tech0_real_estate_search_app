@@ -11,6 +11,18 @@ import re
 import sqlite3
 from function.googlemap_api import get_lat_lon_google_map_api
 
+# 物件データの読み込み
+def estate_data(db_file_name='./scraping/estate_list2.db'):
+    try:
+        with sqlite3.connect(db_file_name) as conn:
+            # SQLクエリを作成
+            df = pd.read_sql('SELECT * FROM Property_data', conn)
+            return df
+
+    except Exception as e:
+        st.error(f"データベースエラー: {e}")
+        return pd.DataFrame()
+
 # スターバックスのデータベースを読み込む関数
 def load_starbucks_data(db_path, table_name):
     with sqlite3.connect(db_path) as conn:
@@ -294,15 +306,4 @@ def filter_estate_data(area, type_options, price_min, price_max, db_file_name='.
     except Exception as e:
         st.error(f"データベースエラー: {e}")
         return pd.DataFrame(), 0
-
-def estate_data(db_file_name='./scraping/estate_list2.db'):
-    try:
-        with sqlite3.connect(db_file_name) as conn:
-            # SQLクエリを作成
-            df = pd.read_sql('SELECT * FROM Property_data', conn)
-            return df
-
-    except Exception as e:
-        st.error(f"データベースエラー: {e}")
-        return pd.DataFrame()
     
