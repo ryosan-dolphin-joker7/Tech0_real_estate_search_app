@@ -7,19 +7,23 @@
 <br>
 
 ```
-20240518_TECHO_STEP3_1_01/
+Tech0_real_estate_search_app/
 │
-├── .env.sample        # 環境変数のダミーデータ
+├── .env               # 環境変数のダミーデータ
 ├── .gitignore         # git-hubプッシュ時のファイル対象除外設定
 ├── README.md
 ├── main.py            # メインのpythonファイル　これをStreamlit sharingでデプロイします
 │
 ├── function/
 │   ├── db_search_function.py   # フロントエンドに不要な処理を関数でまとめています
+│   ├── googlemap_api.py        # Google map API を使って緯度と経度情報を取得します
 │   └── create_df.py            # 物件のデータベースのサンプルデータです
 │
 └── scraping/
     ├── scraping_real_estate.ipynb     # ホームズのwebサイトをスクレイピングするファイル
+    ├── estate_list2.db                # スクレイピングした物件データのデータベース
+    ├── scraping_starbucks2.ipynb      # スターバックスをスクレイピングするファイル
+    ├── starbucks_list2.db             # スターバックスのデータベース
     ├── Step3_Scraping_sample01.py
     └── Step3_Scraping.ipynb
 ```
